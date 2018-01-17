@@ -62,7 +62,7 @@ func newParticipant(multicastNet string, networkInterface string) (*Participant,
 	if err := p.conn.SetMulticastInterface(p.multicastInterface); err != nil {
 		return nil, err
 	}
-	p.conn.SetTTL(MULTICATE_TTL)
+	p.conn.SetTTL(MULTICAST_TTL)
 	p.pid = os.Getpid()
 
 	return p, nil
