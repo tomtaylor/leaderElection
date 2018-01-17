@@ -41,10 +41,3 @@ type Participant struct {
 	localIpAddrNumeric uint32
 	pid                int
 }
-
-type mMessage struct {
-	message   string
-	ipNumber  uint32
-	processId int
-	ipAddr    string
-}
