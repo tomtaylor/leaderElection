@@ -142,7 +142,7 @@ func (this *Participant) watcher() {
 func (this *Participant) processBytes(bytes []byte) {
 	msg := newMMessageFromBytes(bytes)
 	// This is the message we just sent, so ignore it.
-	if this.localIpAddrNumeric == msg.ipNumber && this.pid == msg.processId {
+	if this.localIpAddrNumeric == msg.ipNumber && this.pid == msg.processID {
 		return
 	}
 
@@ -158,7 +158,7 @@ func (this *Participant) announce(message string) {
 	m := &mMessage{
 		message:   message,
 		ipNumber:  this.localIpAddrNumeric,
-		processId: this.pid,
+		processID: this.pid,
 		ipAddr:    this.localIpAddr,
 	}
 	bytes := m.pack()
@@ -184,7 +184,7 @@ func (this *Participant) processLeaderRequest(msg *mMessage) {
 }
 
 func (this *Participant) processElectionRequest(msg *mMessage) {
-	if ((this.localIpAddrNumeric == msg.ipNumber) && this.pid < msg.processId) || (this.localIpAddrNumeric < msg.ipNumber) {
+	if ((this.localIpAddrNumeric == msg.ipNumber) && this.pid < msg.processID) || (this.localIpAddrNumeric < msg.ipNumber) {
 		if this.state == CANDIDATE {
 			this.electionTimer.Stop()
 			this.waitForAnotherLeader = true
