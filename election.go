@@ -41,7 +41,7 @@ func newParticipant(multicastNet string, networkInterface string) (*Participant,
 		return nil, err
 	}
 
-	p.localIpAddr, p.localIpAddrNumeric = getLocalInterfaceIpAddress(p.multicastInterface)
+	p.localIPAddr, p.localIPAddrNumeric = getLocalInterfaceIpAddress(p.multicastInterface)
 
 	groupIP := net.ParseIP(addrsTokens[0])
 	if !groupIP.IsMulticast() {
@@ -142,7 +142,7 @@ func (this *Participant) watcher() {
 func (this *Participant) processBytes(bytes []byte) {
 	msg := newMMessageFromBytes(bytes)
 	// This is the message we just sent, so ignore it.
-	if this.localIpAddrNumeric == msg.ipNumber && this.pid == msg.processID {
+	if this.localIPAddrNumeric == msg.ipNumber && this.pid == msg.processID {
 		return
 	}
 
@@ -157,9 +157,9 @@ func (this *Participant) processBytes(bytes []byte) {
 func (this *Participant) announce(message string) {
 	m := &mMessage{
 		message:   message,
-		ipNumber:  this.localIpAddrNumeric,
+		ipNumber:  this.localIPAddrNumeric,
 		processID: this.pid,
-		ipAddr:    this.localIpAddr,
+		ipAddr:    this.localIPAddr,
 	}
 	bytes := m.pack()
 
@@ -184,7 +184,7 @@ func (this *Participant) processLeaderRequest(msg *mMessage) {
 }
 
 func (this *Participant) processElectionRequest(msg *mMessage) {
-	if ((this.localIpAddrNumeric == msg.ipNumber) && this.pid < msg.processID) || (this.localIpAddrNumeric < msg.ipNumber) {
+	if ((this.localIPAddrNumeric == msg.ipNumber) && this.pid < msg.processID) || (this.localIPAddrNumeric < msg.ipNumber) {
 		if this.state == CANDIDATE {
 			this.electionTimer.Stop()
 			this.waitForAnotherLeader = true

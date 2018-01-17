@@ -37,7 +37,7 @@ type Participant struct {
 	multicastInterface *net.Interface
 
 	//local interface addr
-	localIpAddr        string
-	localIpAddrNumeric uint32
+	localIPAddr        string
+	localIPAddrNumeric uint32
 	pid                int
 }
