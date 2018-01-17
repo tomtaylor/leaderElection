@@ -68,10 +68,6 @@ func newParticipant(multicastNet string, networkInterface string) (*Participant,
 	return p, nil
 }
 
-func (this *Participant) cleanup() {
-	this.conn.Close()
-}
-
 func (this *Participant) leaderPeriodicAnnouncement() {
 	go this.callback(LEADER)
 	ticker := time.NewTicker(time.Millisecond * LEADER_PERIODIC_ANNOUNCEMENT_TIME)
