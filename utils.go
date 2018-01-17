@@ -22,7 +22,7 @@ func supportedInterfaces() []*net.Interface {
 	return ifis
 }
 
-func getLocalInterfaceIpAddress(ifi *net.Interface) (string, uint32) {
+func getLocalInterfaceIPAddress(ifi *net.Interface) (string, uint32) {
 	addrs, err := ifi.Addrs()
 	if err != nil {
 		return "<nil>", 0

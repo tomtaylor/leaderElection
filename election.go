@@ -41,15 +41,15 @@ func newParticipant(multicastNet string, networkInterface string) (*Participant,
 		return nil, err
 	}
 
-	p.localIPAddr, p.localIPAddrNumeric = getLocalInterfaceIpAddress(p.multicastInterface)
+	p.localIPAddr, p.localIPAddrNumeric = getLocalInterfaceIPAddress(p.multicastInterface)
 
 	groupIP := net.ParseIP(addrsTokens[0])
 	if !groupIP.IsMulticast() {
 		return nil, errors.New("Address supplied is not a multicast address")
 	}
 
-	groupIpOctets := strings.Split(addrsTokens[0], ".")
-	conn, err := net.ListenPacket("udp4", groupIpOctets[0]+".0.0.0:"+addrsTokens[1])
+	groupIPOctets := strings.Split(addrsTokens[0], ".")
+	conn, err := net.ListenPacket("udp4", groupIPOctets[0]+".0.0.0:"+addrsTokens[1])
 	if err != nil {
 		return nil, err
 	}
