@@ -1,11 +1,11 @@
 package election
+
 import (
 	"golang.org/x/net/ipv4"
+	"net"
 	"sync"
 	"time"
-	"net"
 )
-
 
 type Callback func(state int)
 
@@ -21,31 +21,30 @@ const (
 	LEADER
 )
 
-type Participant  struct {
+type Participant struct {
 	state int
-	//multicas ip and port
-	ipAddr string
-	port string
-	dst *net.UDPAddr
-	callback Callback
-	conn *ipv4.PacketConn
-	heardFromLeader bool
+	//multicast ip and port
+	ipAddr               string
+	port                 string
+	dst                  *net.UDPAddr
+	callback             Callback
+	conn                 *ipv4.PacketConn
+	heardFromLeader      bool
 	waitForAnotherLeader bool
 	sync.Mutex
-	writeMutex *sync.Mutex
-	electionTimer *time.Timer
+	writeMutex         *sync.Mutex
+	electionTimer      *time.Timer
 	multicastInterface *net.Interface
 
 	//local interface addr
-	localIpAddr string
+	localIpAddr        string
 	localIpAddrNumeric uint32
-	pid int
-
+	pid                int
 }
 
 type mMessage struct {
-	message string
-	ipNumber uint32
+	message   string
+	ipNumber  uint32
 	processId int
-	ipAddr string
+	ipAddr    string
 }
