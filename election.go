@@ -2,7 +2,6 @@ package election
 
 import (
 	"errors"
-	"fmt"
 	"golang.org/x/net/ipv4"
 	"log"
 	"net"
@@ -61,7 +60,7 @@ func newParticipant(multicastNet string, networkInterface string) (*Participant,
 	p.dst, _ = net.ResolveUDPAddr("udp4", multicastNet)
 
 	if err := p.conn.SetMulticastInterface(p.multicastInterface); err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	p.conn.SetTTL(MULTICATE_TTL)
 	p.pid = os.Getpid()
@@ -112,10 +111,8 @@ func (this *Participant) monitorLeader() {
 		case <-bchan:
 			close(bchan)
 			exit = true
-
 		}
 	}
-	log.Println("exiting leader monitor")
 }
 
 func (this *Participant) watcher() {
@@ -135,43 +132,45 @@ func (this *Participant) watcher() {
 
 		buffer = append(buffer, readBuf[:num]...)
 		for len(buffer) >= MSG_BLOCK_SIZE {
-			data := string(buffer[:MSG_BLOCK_SIZE])
-			go this.processData(data)
+			bytes := buffer[:MSG_BLOCK_SIZE]
+			go this.processBytes(bytes)
 			buffer = buffer[MSG_BLOCK_SIZE:]
 		}
 	}
 }
 
-func (this *Participant) processData(data string) {
-	log.Println(data)
-	dataToken := strings.Split(data, "|")
-	switch strings.ToUpper(dataToken[0]) {
-	case "LEADER":
-		this.processLeaderRequest(dataToken)
-	case "ELECTION":
-		this.processElectionRequest(dataToken)
-	}
-}
-
-func (this *Participant) announce(data string) {
-	transmitData := fmt.Sprintf("%s|%d|%d|%s", data, this.localIpAddrNumeric, this.pid, this.localIpAddr)
-	transmitData = transmitData + strings.Repeat("#", MSG_BLOCK_SIZE-len(transmitData))
-	this.writeMutex.Lock()
-	log.Println("Announcing == ", transmitData)
-	if _, err := this.conn.WriteTo([]byte(transmitData), nil, this.dst); err != nil {
-		log.Println(err)
-	}
-
-	this.writeMutex.Unlock()
-}
-
-func (this *Participant) processLeaderRequest(dataToken []string) {
-	msg := parseMessage(dataToken)
+func (this *Participant) processBytes(bytes []byte) {
+	msg := newMMessageFromBytes(bytes)
+	// This is the message we just sent, so ignore it.
 	if this.localIpAddrNumeric == msg.ipNumber && this.pid == msg.processId {
-		log.Println("Same network and process id")
 		return
 	}
 
+	switch strings.ToUpper(msg.message) {
+	case "LEADER":
+		this.processLeaderRequest(msg)
+	case "ELECTION":
+		this.processElectionRequest(msg)
+	}
+}
+
+func (this *Participant) announce(message string) {
+	m := &mMessage{
+		message:   message,
+		ipNumber:  this.localIpAddrNumeric,
+		processId: this.pid,
+		ipAddr:    this.localIpAddr,
+	}
+	bytes := m.pack()
+
+	this.writeMutex.Lock()
+	if _, err := this.conn.WriteTo(bytes, nil, this.dst); err != nil {
+		log.Println(err)
+	}
+	this.writeMutex.Unlock()
+}
+
+func (this *Participant) processLeaderRequest(msg *mMessage) {
 	this.Lock()
 	this.heardFromLeader = true
 	this.Unlock()
@@ -184,14 +183,7 @@ func (this *Participant) processLeaderRequest(dataToken []string) {
 	}
 }
 
-func (this *Participant) processElectionRequest(dataToken []string) {
-	msg := parseMessage(dataToken)
-
-	if this.localIpAddrNumeric == msg.ipNumber && this.pid == msg.processId {
-		log.Println("Same network and process id")
-		return
-	}
-
+func (this *Participant) processElectionRequest(msg *mMessage) {
 	if ((this.localIpAddrNumeric == msg.ipNumber) && this.pid < msg.processId) || (this.localIpAddrNumeric < msg.ipNumber) {
 		if this.state == CANDIDATE {
 			this.electionTimer.Stop()
@@ -208,9 +200,8 @@ func (this *Participant) processElectionRequest(dataToken []string) {
 		return
 	}
 
-	//at this point we are eligible to become leader
+	// At this point we are eligible to become leader
 	if this.state == CANDIDATE {
 		return
 	}
-
 }

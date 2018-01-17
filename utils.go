@@ -3,8 +3,6 @@ package election
 import (
 	"encoding/binary"
 	"net"
-	"strconv"
-	"strings"
 )
 
 func supportedInterfaces() []*net.Interface {
@@ -39,13 +37,4 @@ func getLocalInterfaceIpAddress(ifi *net.Interface) (string, uint32) {
 	}
 
 	return "<nil>", 0
-}
-
-func parseMessage(data []string) *mMessage {
-	num, _ := strconv.ParseUint(data[1], 10, 32)
-	num2, _ := strconv.ParseInt(data[2], 10, 32)
-	i := strings.Index(data[3], "###")
-	ip := data[3][:i]
-
-	return &mMessage{message: data[0], ipNumber: uint32(num), processId: int(num2), ipAddr: ip}
 }
