@@ -9,7 +9,7 @@ import (
 
 type Callback func(state int)
 
-const MSG_BLOCK_SIZE = 128
+const msgBlockSize = 128
 const LEADER_NOTIFICATION_TIMEOUT = 500
 const LEADER_PERIODIC_ANNOUNCEMENT_TIME = 250
 const ELECTION_TIMEOUT = 2

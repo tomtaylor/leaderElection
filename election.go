@@ -127,10 +127,10 @@ func (p *Participant) watcher() {
 		}
 
 		buffer = append(buffer, readBuf[:num]...)
-		for len(buffer) >= MSG_BLOCK_SIZE {
-			bytes := buffer[:MSG_BLOCK_SIZE]
+		for len(buffer) >= msgBlockSize {
+			bytes := buffer[:msgBlockSize]
 			go p.processBytes(bytes)
-			buffer = buffer[MSG_BLOCK_SIZE:]
+			buffer = buffer[msgBlockSize:]
 		}
 	}
 }

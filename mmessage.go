@@ -26,6 +26,6 @@ func newMMessageFromBytes(bytes []byte) *mMessage {
 
 func (m *mMessage) pack() []byte {
 	transmitData := fmt.Sprintf("%s|%d|%d|%s", m.message, m.ipNumber, m.processID, m.ipAddr)
-	transmitData = transmitData + strings.Repeat("#", MSG_BLOCK_SIZE-len(transmitData))
+	transmitData = transmitData + strings.Repeat("#", msgBlockSize-len(transmitData))
 	return []byte(transmitData)
 }
