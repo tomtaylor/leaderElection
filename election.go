@@ -29,8 +29,15 @@ func newParticipant(multicastNet string, networkInterface string) (*Participant,
 	}
 
 	addrsTokens := strings.Split(multicastNet, ":")
-	p := &Participant{state: FOLLOWER, ipAddr: addrsTokens[0], port: addrsTokens[1], heardFromLeader: false,
-		writeMutex: &sync.Mutex{}, electionTimer: nil, waitForAnotherLeader: false}
+	p := &Participant{
+		state:                Follower,
+		ipAddr:               addrsTokens[0],
+		port:                 addrsTokens[1],
+		heardFromLeader:      false,
+		writeMutex:           &sync.Mutex{},
+		electionTimer:        nil,
+		waitForAnotherLeader: false,
+	}
 
 	if "" == networkInterface {
 		return nil, errors.New("Network interface must be specified")
@@ -62,15 +69,15 @@ func newParticipant(multicastNet string, networkInterface string) (*Participant,
 	if err := p.conn.SetMulticastInterface(p.multicastInterface); err != nil {
 		return nil, err
 	}
-	p.conn.SetTTL(MULTICAST_TTL)
+	p.conn.SetTTL(multicastTTL)
 	p.pid = os.Getpid()
 
 	return p, nil
 }
 
 func (p *Participant) leaderPeriodicAnnouncement() {
-	go p.callback(LEADER)
-	ticker := time.NewTicker(time.Millisecond * LEADER_PERIODIC_ANNOUNCEMENT_TIME)
+	go p.callback(Leader)
+	ticker := time.NewTicker(time.Millisecond * leaderPeriodicAnnouncementTime)
 	for range ticker.C {
 		p.announce("LEADER")
 	}
@@ -78,27 +85,27 @@ func (p *Participant) leaderPeriodicAnnouncement() {
 
 func (p *Participant) monitorLeader() {
 	bchan := make(chan bool)
-	ticker := time.NewTicker(time.Millisecond * LEADER_NOTIFICATION_TIMEOUT)
+	ticker := time.NewTicker(time.Millisecond * leaderNotificationTimeout)
 	exit := false
 	for !exit {
 		select {
 		case <-ticker.C:
 			p.Lock()
 			if !p.heardFromLeader {
-				if p.state == FOLLOWER && !p.waitForAnotherLeader {
-					p.state = CANDIDATE
+				if p.state == Follower && !p.waitForAnotherLeader {
+					p.state = Candidate
 					p.announce("ELECTION")
-					p.electionTimer = time.NewTimer(time.Second * ELECTION_TIMEOUT)
+					p.electionTimer = time.NewTimer(time.Second * electionTimeout)
 
 					go func() {
 						<-p.electionTimer.C
-						p.state = LEADER
+						p.state = Leader
 						ticker.Stop()
 						bchan <- true
 						go p.leaderPeriodicAnnouncement()
 					}()
 
-					go p.callback(CANDIDATE)
+					go p.callback(Candidate)
 				}
 			} else {
 				p.heardFromLeader = false
@@ -172,19 +179,19 @@ func (p *Participant) processLeaderRequest(msg *mMessage) {
 	p.Unlock()
 
 	p.waitForAnotherLeader = false
-	if p.state == CANDIDATE {
+	if p.state == Candidate {
 		p.electionTimer.Stop()
-		p.state = FOLLOWER
+		p.state = Follower
 		go p.callback(p.state)
 	}
 }
 
 func (p *Participant) processElectionRequest(msg *mMessage) {
 	if ((p.localIPAddrNumeric == msg.ipNumber) && p.pid < msg.processID) || (p.localIPAddrNumeric < msg.ipNumber) {
-		if p.state == CANDIDATE {
+		if p.state == Candidate {
 			p.electionTimer.Stop()
 			p.waitForAnotherLeader = true
-			p.state = FOLLOWER
+			p.state = Follower
 			go p.callback(p.state)
 
 			go func() {
@@ -197,7 +204,7 @@ func (p *Participant) processElectionRequest(msg *mMessage) {
 	}
 
 	// At p point we are eligible to become leader
-	if p.state == CANDIDATE {
+	if p.state == Candidate {
 		return
 	}
 }

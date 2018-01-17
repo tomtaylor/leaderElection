@@ -10,15 +10,15 @@ import (
 type Callback func(state int)
 
 const msgBlockSize = 128
-const LEADER_NOTIFICATION_TIMEOUT = 500
-const LEADER_PERIODIC_ANNOUNCEMENT_TIME = 250
-const ELECTION_TIMEOUT = 2
-const MULTICAST_TTL = 10
+const leaderNotificationTimeout = 500
+const leaderPeriodicAnnouncementTime = 250
+const electionTimeout = 2
+const multicastTTL = 10
 
 const (
-	FOLLOWER = iota
-	CANDIDATE
-	LEADER
+	Follower = iota
+	Candidate
+	Leader
 )
 
 type Participant struct {
