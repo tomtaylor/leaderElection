@@ -68,42 +68,42 @@ func newParticipant(multicastNet string, networkInterface string) (*Participant,
 	return p, nil
 }
 
-func (this *Participant) leaderPeriodicAnnouncement() {
-	go this.callback(LEADER)
+func (p *Participant) leaderPeriodicAnnouncement() {
+	go p.callback(LEADER)
 	ticker := time.NewTicker(time.Millisecond * LEADER_PERIODIC_ANNOUNCEMENT_TIME)
 	for range ticker.C {
-		this.announce("LEADER")
+		p.announce("LEADER")
 	}
 }
 
-func (this *Participant) monitorLeader() {
+func (p *Participant) monitorLeader() {
 	bchan := make(chan bool)
 	ticker := time.NewTicker(time.Millisecond * LEADER_NOTIFICATION_TIMEOUT)
 	exit := false
 	for !exit {
 		select {
 		case <-ticker.C:
-			this.Lock()
-			if !this.heardFromLeader {
-				if this.state == FOLLOWER && !this.waitForAnotherLeader {
-					this.state = CANDIDATE
-					this.announce("ELECTION")
-					this.electionTimer = time.NewTimer(time.Second * ELECTION_TIMEOUT)
+			p.Lock()
+			if !p.heardFromLeader {
+				if p.state == FOLLOWER && !p.waitForAnotherLeader {
+					p.state = CANDIDATE
+					p.announce("ELECTION")
+					p.electionTimer = time.NewTimer(time.Second * ELECTION_TIMEOUT)
 
 					go func() {
-						<-this.electionTimer.C
-						this.state = LEADER
+						<-p.electionTimer.C
+						p.state = LEADER
 						ticker.Stop()
 						bchan <- true
-						go this.leaderPeriodicAnnouncement()
+						go p.leaderPeriodicAnnouncement()
 					}()
 
-					go this.callback(CANDIDATE)
+					go p.callback(CANDIDATE)
 				}
 			} else {
-				this.heardFromLeader = false
+				p.heardFromLeader = false
 			}
-			this.Unlock()
+			p.Unlock()
 		case <-bchan:
 			close(bchan)
 			exit = true
@@ -111,13 +111,13 @@ func (this *Participant) monitorLeader() {
 	}
 }
 
-func (this *Participant) watcher() {
-	go this.monitorLeader()
+func (p *Participant) watcher() {
+	go p.monitorLeader()
 
 	buffer := []byte{}
 	readBuf := make([]byte, 1500)
 	for {
-		num, cm, _, err := this.conn.ReadFrom(readBuf)
+		num, cm, _, err := p.conn.ReadFrom(readBuf)
 		if err != nil {
 			log.Println(err)
 		}
@@ -129,75 +129,75 @@ func (this *Participant) watcher() {
 		buffer = append(buffer, readBuf[:num]...)
 		for len(buffer) >= MSG_BLOCK_SIZE {
 			bytes := buffer[:MSG_BLOCK_SIZE]
-			go this.processBytes(bytes)
+			go p.processBytes(bytes)
 			buffer = buffer[MSG_BLOCK_SIZE:]
 		}
 	}
 }
 
-func (this *Participant) processBytes(bytes []byte) {
+func (p *Participant) processBytes(bytes []byte) {
 	msg := newMMessageFromBytes(bytes)
-	// This is the message we just sent, so ignore it.
-	if this.localIPAddrNumeric == msg.ipNumber && this.pid == msg.processID {
+	// p is the message we just sent, so ignore it.
+	if p.localIPAddrNumeric == msg.ipNumber && p.pid == msg.processID {
 		return
 	}
 
 	switch strings.ToUpper(msg.message) {
 	case "LEADER":
-		this.processLeaderRequest(msg)
+		p.processLeaderRequest(msg)
 	case "ELECTION":
-		this.processElectionRequest(msg)
+		p.processElectionRequest(msg)
 	}
 }
 
-func (this *Participant) announce(message string) {
+func (p *Participant) announce(message string) {
 	m := &mMessage{
 		message:   message,
-		ipNumber:  this.localIPAddrNumeric,
-		processID: this.pid,
-		ipAddr:    this.localIPAddr,
+		ipNumber:  p.localIPAddrNumeric,
+		processID: p.pid,
+		ipAddr:    p.localIPAddr,
 	}
 	bytes := m.pack()
 
-	this.writeMutex.Lock()
-	if _, err := this.conn.WriteTo(bytes, nil, this.dst); err != nil {
+	p.writeMutex.Lock()
+	if _, err := p.conn.WriteTo(bytes, nil, p.dst); err != nil {
 		log.Println(err)
 	}
-	this.writeMutex.Unlock()
+	p.writeMutex.Unlock()
 }
 
-func (this *Participant) processLeaderRequest(msg *mMessage) {
-	this.Lock()
-	this.heardFromLeader = true
-	this.Unlock()
+func (p *Participant) processLeaderRequest(msg *mMessage) {
+	p.Lock()
+	p.heardFromLeader = true
+	p.Unlock()
 
-	this.waitForAnotherLeader = false
-	if this.state == CANDIDATE {
-		this.electionTimer.Stop()
-		this.state = FOLLOWER
-		go this.callback(this.state)
+	p.waitForAnotherLeader = false
+	if p.state == CANDIDATE {
+		p.electionTimer.Stop()
+		p.state = FOLLOWER
+		go p.callback(p.state)
 	}
 }
 
-func (this *Participant) processElectionRequest(msg *mMessage) {
-	if ((this.localIPAddrNumeric == msg.ipNumber) && this.pid < msg.processID) || (this.localIPAddrNumeric < msg.ipNumber) {
-		if this.state == CANDIDATE {
-			this.electionTimer.Stop()
-			this.waitForAnotherLeader = true
-			this.state = FOLLOWER
-			go this.callback(this.state)
+func (p *Participant) processElectionRequest(msg *mMessage) {
+	if ((p.localIPAddrNumeric == msg.ipNumber) && p.pid < msg.processID) || (p.localIPAddrNumeric < msg.ipNumber) {
+		if p.state == CANDIDATE {
+			p.electionTimer.Stop()
+			p.waitForAnotherLeader = true
+			p.state = FOLLOWER
+			go p.callback(p.state)
 
 			go func() {
 				tmpTimer := time.NewTimer(time.Second * 5)
 				<-tmpTimer.C
-				this.waitForAnotherLeader = false
+				p.waitForAnotherLeader = false
 			}()
 		}
 		return
 	}
 
-	// At this point we are eligible to become leader
-	if this.state == CANDIDATE {
+	// At p point we are eligible to become leader
+	if p.state == CANDIDATE {
 		return
 	}
 }
